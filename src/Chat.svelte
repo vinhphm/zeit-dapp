@@ -1,8 +1,8 @@
 <script>
   import Login from "./Login.svelte";
   import ChatMessage from "./ChatMessage.svelte";
-  import { username, user } from "./user";
   import { onMount } from "svelte";
+  import { username, user } from "./user";
   import debounce from "lodash.debounce";
 
   import GUN from "gun";
@@ -17,25 +17,25 @@
   let unreadMessages = false;
 
   function autoScroll() {
-    setTimeout(() => scrollBottom?.scrollIntoView({ behavior: "auto"}), 50);
+    setTimeout(() => scrollBottom?.scrollIntoView({ behavior: "auto" }), 50);
     unreadMessages = false;
   }
 
-  function whatScroll(e) {
+  function watchScroll(e) {
     canAutoScroll = (e.target.scrollTop || Infinity) > lastScrollTop;
     lastScrollTop = e.target.scrollTop;
   }
 
-  $: debounceWhatScroll = debounce(whatScroll, 1000);
+  $: debouncedWatchScroll = debounce(watchScroll, 1000);
 
   onMount(() => {
     var match = {
-      // lexical queries are kind of like a limited RegEx or Glob
+      // lexical queries are kind of like a limited RegEx or Glob.
       ".": {
         // property selector
         ">": new Date(+new Date() - 1 * 1000 * 60 * 60 * 3).toISOString(), // find any indexed property larger ~3 hours ago
       },
-      "-": 1, // filterr in reverse
+      "-": 1, // filter in reverse
     };
 
     // Get Messages
@@ -48,13 +48,15 @@
 
           var message = {
             // transform the data
-            who: await db.user(data).get("alias"), // a user might lie who they are! So let the user system detect whose data it is
-            what: (await SEA.decrypt(data.what, key)) + "", // force decrypt as text
-            when: GUN.state.is(data, "what"), // get the internal timestamp for the what property
+            who: await db.user(data).get("alias"), // a user might lie who they are! So let the user system detect whose data it is.
+            what: (await SEA.decrypt(data.what, key)) + "", // force decrypt as text.
+            when: GUN.state.is(data, "what"), // get the internal timestamp for the what property.
           };
 
           if (message.what) {
-            messages = [...messages.slice(-100), message].sort((a, b) => a.when - b.when);
+            messages = [...messages.slice(-100), message].sort(
+              (a, b) => a.when - b.when
+            );
             if (canAutoScroll) {
               autoScroll();
             } else {
@@ -62,7 +64,7 @@
             }
           }
         }
-      })
+      });
   });
 
   async function sendMessage() {
@@ -78,21 +80,36 @@
 
 <div class="container">
   {#if $username}
-    <main>
+    <main on:scroll={debouncedWatchScroll}>
       {#each messages as message (message.when)}
-       <ChatMessage {message} sender={$username} />
+        <ChatMessage {message} sender={$username} />
       {/each}
 
       <div class="dummy" bind:this={scrollBottom} />
     </main>
 
     <form on:submit|preventDefault={sendMessage}>
-      <input type="text" placeholder="Type a message..." bind:value={newMessage} maxlength="100" />
+      <input
+        type="text"
+        placeholder="Type a message..."
+        bind:value={newMessage}
+        maxlength="100"
+      />
 
       <button type="submit" disabled={!newMessage}>💥</button>
     </form>
 
-    
+    {#if !canAutoScroll}
+      <div class="scroll-button">
+        <button on:click={autoScroll} class:red={unreadMessages}>
+          {#if unreadMessages}
+            💬
+          {/if}
+
+          👇
+        </button>
+      </div>
+    {/if}
   {:else}
     <main>
       <Login />
